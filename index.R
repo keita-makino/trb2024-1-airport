@@ -6,8 +6,11 @@ library(apollo)
 
 raw_data <- read_sav(file.path("data", "data.sav"))
 
+source("FA.R")
+
 database <- raw_data %>%
   filter(gc == 1) %>%
+  inner_join(factor_5, by = "ResponseId") %>%
   filter(C02_1 < 5) %>%
   mutate(
     mode = case_when(
@@ -45,9 +48,13 @@ database <- raw_data %>%
       T ~ mode
     )
   ) %>%
-  select(ResponseId, B02_1, B05, B07, B08, mode) %>%
+  select(ResponseId, B02_1, starts_with("B03"), -starts_with("TEXT"), B05, B07, B08, starts_with("C00_2"), starts_with("PA"), mode) %>%
   mutate(
     B02_1 = 2023 - (B02_1 %>% as.numeric()),
+    whitealone = case_when(
+      B03_4 == 1 & B03_1 + B03_2 + B03_3 + B03_4 + B03_5 == 1 ~ 1,
+      T ~ 0
+    ),
     B05 = case_when(
       B05 == 1 ~ 1,
       T ~ 2
@@ -62,6 +69,7 @@ database <- raw_data %>%
       B08 < 6 ~ 2,
       T ~ 3
     ),
+    num_flights_lastyear = pmax(C00_2_1_1, 0) + pmax(C00_2_1_2, 0) + pmax(C00_2_2_1, 0) + pmax(C00_2_2_2, 0),
     mode_id = case_when(
       mode == "PV" ~ 1,
       mode == "PT" ~ 2,
@@ -75,84 +83,5 @@ database <- raw_data %>%
       B02_1 < 55 ~ 2,
       T ~ 3
     )
-  )
-
-apollo_initialise()
-
-apollo_control <- list(
-  modelName       = "mnl_test",
-  modelDescr      = "test mnl model",
-  indivID         = "ResponseId",
-  outputDirectory = "output"
-)
-
-apollo_beta <- c(
-  asc_pt = 0,
-  asc_rh = 0,
-  asc_dp = 0,
-  b_inc_mid_pt = 0,
-  b_inc_mid_rh = 0,
-  b_inc_mid_dp = 0,
-  b_inc_high_pt = 0,
-  b_inc_high_rh = 0,
-  b_inc_high_dp = 0,
-  b_gen_nonwoman_pt = 0,
-  b_gen_nonwoman_rh = 0,
-  b_gen_nonwoman_dp = 0,
-  b_age_mid_pt = 0,
-  b_age_mid_rh = 0,
-  b_age_mid_dp = 0,
-  b_age_high_pt = 0,
-  b_age_high_rh = 0,
-  b_age_high_dp = 0
-)
-
-apollo_fixed <- c()
-
-apollo_inputs <- apollo_validateInputs()
-
-apollo_probabilities <- function(apollo_beta, apollo_inputs, functionality = "estimate") {
-  apollo_attach(apollo_beta, apollo_inputs)
-  on.exit(apollo_detach(apollo_beta, apollo_inputs))
-
-  P <- list()
-
-  V <- list()
-  V[["pv"]] <- 0
-  V[["pt"]] <- asc_pt +
-    b_inc_mid_pt * (B08 == 2) +
-    b_inc_high_pt * (B08 == 3) +
-    b_gen_nonwoman_pt * (B05 == 2) +
-    b_age_mid_pt * (B02_1 == 2) +
-    b_age_high_pt * (B02_1 == 3)
-  V[["rh"]] <- asc_rh +
-    b_inc_mid_rh * (B08 == 2) +
-    b_inc_high_rh * (B08 == 3) +
-    b_gen_nonwoman_rh * (B05 == 2) +
-    b_age_mid_rh * (B02_1 == 2) +
-    b_age_high_rh * (B02_1 == 3)
-  V[["dp"]] <- asc_dp +
-    b_inc_mid_dp * (B08 == 2) +
-    b_inc_high_dp * (B08 == 3) +
-    b_gen_nonwoman_dp * (B05 == 2) +
-    b_age_mid_dp * (B02_1 == 2) +
-    b_age_high_dp * (B02_1 == 3)
-
-  mnl_settings <- list(
-    alternatives = c(pv = 1, pt = 2, rh = 3, dp = 4),
-    avail = list(pv = 1, pt = 1, rh = 1, dp = 1),
-    choiceVar = mode_id,
-    explanators = c("B08"),
-    utilities = V
-  )
-
-  P[["model"]] <- apollo_mnl(mnl_settings, functionality)
-
-  P <- apollo_prepareProb(P, apollo_inputs, functionality)
-  return(P)
-}
-
-model <- apollo_estimate(apollo_beta, apollo_fixed, apollo_probabilities, apollo_inputs)
-
-apollo_modelOutput(model)
-apollo_saveOutput(model)
+  ) %>%
+  select(-starts_with("B03"))
