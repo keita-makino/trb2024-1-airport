@@ -14,7 +14,8 @@ database <- raw_data %>%
   filter(C02_1 < 5) %>%
   mutate(
     mode = case_when(
-      C02_11_6 == 1 | C02_11_7 == 1 ~ "PT",
+      C02_11_6 == 1 ~ "BU",
+      C02_11_7 == 1 ~ "RA",
       C02_11_4 == 1 | C02_11_5 == 1 | C02_11_8 == 1 | C02_11_9 == 1 ~ "RH",
       C02_11_1 == 1 | C02_11_2 == 1 ~ "PV",
       C02_11_3 == 1 ~ "DP",
@@ -24,7 +25,7 @@ database <- raw_data %>%
   mutate(
     mode = case_when(
       ResponseId == "R_0vNEJKFm1cccxR7" |
-        ResponseId == "R_BsRKjKlUHLyeHGp" ~ "PT",
+        ResponseId == "R_BsRKjKlUHLyeHGp" ~ "BU",
       ResponseId == "R_2VeHTu5jM3yAli4" |
         ResponseId == "R_1jKefwYhDtLLdiI" |
         ResponseId == "R_DGFpvNEoJq4kTct" |
@@ -48,7 +49,6 @@ database <- raw_data %>%
       T ~ mode
     )
   ) %>%
-  select(ResponseId, B02_1, starts_with("B03"), -starts_with("TEXT"), B05, B07, B08, starts_with("C00_2"), starts_with("PA"), mode) %>%
   mutate(
     B02_1 = 2023 - (B02_1 %>% as.numeric()),
     whitealone = case_when(
@@ -72,7 +72,8 @@ database <- raw_data %>%
     num_flights_lastyear = pmax(C00_2_1_1, 0) + pmax(C00_2_1_2, 0) + pmax(C00_2_2_1, 0) + pmax(C00_2_2_2, 0),
     mode_id = case_when(
       mode == "PV" ~ 1,
-      mode == "PT" ~ 2,
+      mode == "BU" ~ 2,
+      mode == "RA" ~ 2,
       mode == "RH" ~ 3,
       mode == "DP" ~ 4
     )
@@ -84,4 +85,56 @@ database <- raw_data %>%
       T ~ 3
     )
   ) %>%
-  select(-starts_with("B03"))
+  mutate(
+    av_pv = case_when(
+      mode == "PV" | C02_16_1 >= 3 | C02_16_2 >= 3 ~ 1,
+      T ~ 0
+    ),
+    av_bu = case_when(
+      mode == "BU" | C02_16_6 >= 3 ~ 1,
+      T ~ 0
+    ),
+    av_ra = case_when(
+      C02_1 == 3 ~ 0,
+      mode == "RA" | C02_16_7 >= 3 ~ 1,
+      T ~ 0
+    ),
+    av_pt = case_when(
+      mode == "BU" | mode == "RA" | C02_16_6 >= 3 | C02_16_7 >= 3 ~ 1,
+      T ~ 0
+    ),
+    av_rh = case_when(
+      mode == "RH" | C02_16_4 >= 3 | C02_16_5 >= 3 | C02_16_8 >= 3 | C02_16_9 >= 3 ~ 1,
+      T ~ 0
+    ),
+    av_dp = case_when(
+      mode == "DP" | C02_16_3 >= 3 ~ 1,
+      T ~ 0
+    ),
+    B15 = B15_01 + B15_02
+  ) %>%
+  mutate_at(
+    vars(starts_with("D01")),
+    ~ {
+      y <- (.x %>% replace(. == 6, NA) - 3)
+    }
+  ) %>%
+  select(
+    starts_with("B15"),
+    ResponseId,
+    C02_1,
+    C02_12_2,
+    B02_1,
+    -starts_with("TEXT"),
+    B05,
+    B07,
+    B08,
+    whitealone,
+    starts_with("C00_2"),
+    starts_with("PA"),
+    num_flights_lastyear,
+    mode,
+    mode_id,
+    starts_with("av"),
+    starts_with("D01")
+  )
