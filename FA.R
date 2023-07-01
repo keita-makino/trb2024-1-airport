@@ -25,8 +25,8 @@ get_factor <- function(n) {
         rotate = "cluster",
         scores = "tenBerge",
         max.iter = 2000,
-        SMC = TRUE,
         warnings = TRUE,
+        SMC = TRUE,
         fm = "pa"
       )
 
@@ -67,5 +67,4 @@ get_factor <- function(n) {
   )
 }
 
-get_factor(4)
 get_factor(5)

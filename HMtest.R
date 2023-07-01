@@ -2,28 +2,43 @@ library(mlogit)
 
 data <- database %>%
     select(
-        B02_1, B05, B07, B08, num_flights_lastyear, mode
+        B02_1,
+        B05,
+        B08,
+        whitealone,
+        num_flights_lastyear,
+        mode,
+        starts_with("PA")
+    ) %>%
+    mutate(
+        B02_1 = factor(B02_1),
+        B05 = factor(B05),
+        B08 = factor(B08),
+        whitealone = factor(whitealone)
     ) %>%
     mutate(
         mode = factor(mode),
-        B02_1.PV = B02_1,
-        B02_1.PT = B02_1,
-        B02_1.RH = B02_1,
-        B02_1.DP = B02_1,
         num_flights_lastyear = log(num_flights_lastyear + 1)
     ) %>%
-    select(
-        -B02_1
-    ) %>%
     dfidx(
-        varying = 6:9,
+        shape = "wide",
         choice = "mode"
     )
 
 model1 <- mlogit(
-    mode ~ 0 | B02_1 + B05 + B08 + num_flights_lastyear,
+    mode ~ 0 |
+        B02_1 +
+            B05 +
+            B08 +
+            num_flights_lastyear +
+            whitealone +
+            PA1 +
+            PA2 +
+            PA3 +
+            PA4 +
+            PA5,
     data,
-    nest = list("P" = c("PV", "DP"), "O" = c("PT", "RH")),
+    nest = list(PV = c("PV", "DP"), PT = c("PT"), RH = c("RH")),
     reflevel = "PV",
     un.nest.el = TRUE
 )

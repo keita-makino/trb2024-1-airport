@@ -1,8 +1,8 @@
 apollo_initialise()
 
 apollo_control <- list(
-  modelName       = "mnl_test_3",
-  modelDescr      = "test mnl model with factor scores",
+  modelName       = "mnl_6_2",
+  modelDescr      = "mnl model with factor scores as alternative specific variables and opinions as generic variables",
   indivID         = "ResponseId",
   outputDirectory = "output"
 )
@@ -46,7 +46,14 @@ apollo_beta <- c(
   b_factor4_dp = 0,
   b_factor5_pt = 0,
   b_factor5_rh = 0,
-  b_factor5_dp = 0
+  b_factor5_dp = 0,
+  b_availability = 0,
+  b_easeofuse = 0,
+  b_accessibility_home = 0,
+  b_accessibility_station = 0,
+  b_affordability = 0,
+  b_cleanliness_vehicle = 0,
+  b_cleanliness_location = 0
 )
 
 apollo_fixed <- c()
@@ -60,7 +67,11 @@ apollo_probabilities <- function(apollo_beta, apollo_inputs, functionality = "es
   P <- list()
 
   V <- list()
-  V[["pv"]] <- 0
+  V[["pv"]] <- b_availability * av_pv * D01_1_1 +
+    b_easeofuse * av_pv * D01_1_2 +
+    b_accessibility_station * av_pv * D01_1_3 +
+    b_affordability * av_pv * D01_1_4 +
+    b_cleanliness_location * av_pv * D01_1_5
   V[["pt"]] <- asc_pt +
     b_inc_mid_pt * (B08 == 2) +
     b_inc_high_pt * (B08 == 3) +
@@ -73,7 +84,21 @@ apollo_probabilities <- function(apollo_beta, apollo_inputs, functionality = "es
     b_factor2_pt * PA2 +
     b_factor3_pt * PA3 +
     b_factor4_pt * PA4 +
-    b_factor5_pt * PA5
+    b_factor5_pt * PA5 +
+    (
+      b_availability * (mode != "RA") * av_bu * D01_2_1 +
+        b_easeofuse * (mode != "RA") * av_bu * D01_2_2 +
+        b_accessibility_station * (mode != "RA") * av_bu * D01_2_3 +
+        b_accessibility_home * (mode != "RA") * av_bu * D01_2_4 +
+        b_affordability * (mode != "RA") * av_bu * D01_2_5 +
+        b_cleanliness_location * (mode != "RA") * av_bu * D01_2_6 +
+        b_availability * (mode != "BU") * av_ra * D01_3_1 +
+        b_easeofuse * (mode != "BU") * av_ra * D01_3_2 +
+        b_accessibility_station * (mode != "BU") * av_ra * D01_3_3 +
+        b_accessibility_home * (mode != "BU") * av_ra * D01_3_4 +
+        b_affordability * (mode != "BU") * av_ra * D01_3_5 +
+        b_cleanliness_location * (mode != "BU") * av_ra * D01_3_6
+    ) / ((mode != "RA" & mode != "BU") + 1)
   V[["rh"]] <- asc_rh +
     b_inc_mid_rh * (B08 == 2) +
     b_inc_high_rh * (B08 == 3) +
@@ -86,7 +111,12 @@ apollo_probabilities <- function(apollo_beta, apollo_inputs, functionality = "es
     b_factor2_rh * PA2 +
     b_factor3_rh * PA3 +
     b_factor4_rh * PA4 +
-    b_factor5_rh * PA5
+    b_factor5_rh * PA5 +
+    b_availability * av_rh * D01_4_1 +
+    b_easeofuse * av_rh * D01_4_2 +
+    b_accessibility_station * av_rh * D01_4_3 +
+    b_cleanliness_vehicle * av_rh * D01_4_5 +
+    b_cleanliness_location * av_rh * D01_4_6
   V[["dp"]] <- asc_dp +
     b_inc_mid_dp * (B08 == 2) +
     b_inc_high_dp * (B08 == 3) +
